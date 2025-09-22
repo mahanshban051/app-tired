@@ -92,21 +92,18 @@
 </head>
 <body>
 
-  <div class="game-title">PIXEL DARK QUEST</div>
+  <div class="game-title">tired</div>
   <h1>CHOOSE YOUR LEVEL</h1>
 
   <div class="levels">
-    <!-- مرحله اول -->
     <a href="level1.html" aria-label="Level 1" class="level">LEVEL 1</a>
-
-    <!-- مرحله دوم (قفل تا وقتی برنده نشیم) -->
     <div id="level2" class="level locked" aria-label="Level 2 locked">
       LEVEL 2
     </div>
   </div>
 
   <script>
-    // باز کردن مرحله ۲ اگر در localStorage ذخیره شده بود
+د
     if (localStorage.getItem("level2Unlocked") === "true") {
       const lvl2 = document.getElementById("level2");
       lvl2.classList.remove("locked");
@@ -115,3 +112,4 @@
   </script>
 </body>
 </html>
+
