@@ -16,7 +16,6 @@
     .hud{position:absolute;top:10px;left:10px;display:flex;gap:6px;align-items:center;z-index:5}
     .heart{width:28px;height:28px;background:url('https://i.imgur.com/o3S0N5K.png') no-repeat center/contain}
 
-    /* پاپ آپ پایان مرحله */
     .popup {
       position: fixed;
       inset: 0;
@@ -70,7 +69,6 @@
     </div>
   </div>
 
-  <!-- پاپ آپ پایان مرحله -->
   <div id="popup" class="popup">
     <div class="popup-box">
       <h2 id="popupMsg">🎉 مرحله تمام شد!</h2>
@@ -118,7 +116,7 @@
     function updatePhysics(){
       if (!player.alive) return;
 
-      // گرانش و حرکت پلیر
+
       player.vy+=G; player.y+=player.vy;
       if (player.y+player.h>=groundY){ player.y=groundY-player.h; player.vy=0; player.grounded=true; }
       else player.grounded=false;
@@ -227,7 +225,7 @@
       popup.classList.add("active");
     }
 
-    // کنترل‌ها
+
     window.addEventListener('keydown',e=>{
       if(e.code==='ArrowLeft') leftPressed=true;
       if(e.code==='ArrowRight') rightPressed=true;
