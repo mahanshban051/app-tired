@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pixel Loading</title>
+  <style>
+    @font-face {
+      font-family: 'PixelFont';
+      src: url('https://fonts.cdnfonts.com/s/14597/PressStart2P-Regular.woff') format('woff');
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+      font-family: 'PixelFont', monospace;
+      color: #f0f0f0;
+      image-rendering: pixelated;
+      background-image: url('https://i.imgur.com/ZbhBesY.jpeg');
+      background-size: cover;
+      background-position: center;
+    }
+
+    .loader {
+      width: 32px;
+      height: 32px;
+      background-image: url('https://i.imgur.com/dsD4a8j.gif');
+      background-size: contain;
+      background-repeat: no-repeat;
+      margin-bottom: 20px;
+    }
+
+    .loading-text {
+      font-size: 12px;
+      text-align: center;
+      animation: blink 1s steps(2, start) infinite;
+    }
+
+    @keyframes blink {
+      to { visibility: hidden; }
+    }
+
+    .progress-bar-container {
+      width: 200px;
+      height: 16px;
+      background-color: #333;
+      border: 2px solid #555;
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #00ff00;
+      transition: width 0.25s steps(4);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loader"></div>
+  <div class="loading-text">LOADING...</div>
+
+  <div class="progress-bar-container">
+    <div class="progress-bar"></div>
+  </div>
+
+  <audio id="coin" src="https://freesound.org/data/previews/341/341695_6261195-lq.mp3"></audio>
+
+  <script>
+    const bar = document.querySelector(".progress-bar");
+    const audio = document.getElementById("coin");
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 5;
+      bar.style.width = progress + "%";
+
+      if(progress >= 100){
+        clearInterval(interval);
+        audio.play();
+        setTimeout(() => {
+          window.location.href = "levels.html";
+        }, 800);
+      }
+    }, 250);
+  </script>
+</body>
+</html>

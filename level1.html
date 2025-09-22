@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Level 1</title>
+  <style>
+    html,body{height:100%;margin:0;font-family:'Press Start 2P', monospace;overflow:hidden}
+    body{display:flex;align-items:center;justify-content:center;background:#000;color:#fff}
+    @import url('https://fonts.cdnfonts.com/css/press-start-2p');
+
+    .wrap{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    canvas{display:block;border-radius:8px;background:linear-gradient(#444,#111);box-shadow:0 8px 20px rgba(0,0,0,.4)}
+    .ui{position:absolute;bottom:12px;left:0;right:0;display:flex;justify-content:center;gap:10px}
+    .btn{background:#222;color:#fff;padding:10px 14px;border-radius:8px;border:3px solid #555;font-size:14px;box-shadow:0 0 8px #000;cursor:pointer}
+    .hud{position:absolute;top:10px;left:10px;display:flex;gap:6px;align-items:center;z-index:5}
+    .heart{width:28px;height:28px;background:url('https://i.imgur.com/o3S0N5K.png') no-repeat center/contain}
+
+    /* پاپ آپ پایان مرحله */
+    .popup {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      visibility: hidden;
+    }
+    .popup.active { visibility: visible; }
+    .popup-box {
+      background:#111;
+      border:4px solid #00ffe0;
+      padding:20px;
+      text-align:center;
+      font-family:'Press Start 2P', monospace;
+      color:#00ffe0;
+      text-shadow:0 0 6px #00ffe0;
+      box-shadow:0 0 25px #00ffe0;
+    }
+    .popup h2 {
+      font-size:16px;
+      margin-bottom:20px;
+    }
+    .popup button {
+      display:inline-block;
+      margin:6px;
+      padding:10px 14px;
+      font-size:12px;
+      background:#000;
+      border:2px solid #00ffe0;
+      color:#00ffe0;
+      cursor:pointer;
+      text-shadow:0 0 4px #00ffe0;
+    }
+    .popup button:hover {
+      background:#00ffe0;
+      color:#000;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="game" width="960" height="360"></canvas>
+    <div class="hud"><div class="heart"></div></div>
+    <div class="ui">
+      <button id="left" class="btn">◀️</button>
+      <button id="jump" class="btn">⏫ پرش</button>
+      <button id="attack" class="btn">⚔️ اتک</button>
+      <button id="right" class="btn">▶️</button>
+    </div>
+  </div>
+
+  <!-- پاپ آپ پایان مرحله -->
+  <div id="popup" class="popup">
+    <div class="popup-box">
+      <h2 id="popupMsg">🎉 مرحله تمام شد!</h2>
+      <div id="popupBtns"></div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const DPR = window.devicePixelRatio || 1;
+
+    const SPRITE_SRC = 'https://i.imgur.com/PJN3g2C.jpeg';
+    const FRAME_COUNT = 4;
+    const FRAME_DISPLAY_WIDTH = 96;
+    const FRAME_DISPLAY_HEIGHT = 96;
+
+    let groundY;
+    let player = { x: 80, y: 0, w: FRAME_DISPLAY_WIDTH*0.6, h: FRAME_DISPLAY_HEIGHT*0.9, vy:0, grounded:false, speed:4, facing:1, attacking:false, alive:true };
+    let enemy = { x: 500, y: 0, w: 60, h: 60, alive: true, speed:2 };
+
+    const sprite = new Image(); sprite.src = SPRITE_SRC;
+
+    const STATE = { IDLE:'idle', RUN:'run', JUMP:'jump', ATTACK:'attack' };
+    let playerState = STATE.IDLE;
+    let runFrameToggle=0, frameTimer=0;
+    let leftPressed=false, rightPressed=false;
+
+    const G=0.9, JUMP_V=-14;
+
+    function resizeCanvas(){
+      const w=window.innerWidth,h=window.innerHeight;
+      let newW,newH;
+      if (w/h > 16/9){ newH=h; newW=Math.floor(h*16/9); }
+      else { newW=w; newH=Math.floor(w*9/16); }
+      canvas.style.width=newW+'px'; canvas.style.height=newH+'px';
+      canvas.width=Math.round(newW*DPR); canvas.height=Math.round(newH*DPR);
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+      groundY=canvas.height/DPR-80;
+      player.y=Math.min(player.y||0,groundY-player.h);
+      enemy.y=groundY-enemy.h;
+    }
+    window.addEventListener('resize',resizeCanvas); resizeCanvas();
+
+    function updatePhysics(){
+      if (!player.alive) return;
+
+      // گرانش و حرکت پلیر
+      player.vy+=G; player.y+=player.vy;
+      if (player.y+player.h>=groundY){ player.y=groundY-player.h; player.vy=0; player.grounded=true; }
+      else player.grounded=false;
+
+      if (leftPressed&&!rightPressed){ player.x-=player.speed; player.facing=-1; }
+      else if (rightPressed&&!leftPressed){ player.x+=player.speed; player.facing=1; }
+
+      const maxX=canvas.width/DPR-player.w-8,minX=8;
+      if (player.x<minX) player.x=minX; if (player.x>maxX) player.x=maxX;
+
+      // دشمن دنبال پلیر
+      if (enemy.alive){
+        if (enemy.x < player.x-5) enemy.x+=enemy.speed;
+        else if (enemy.x > player.x+5) enemy.x-=enemy.speed;
+      }
+
+      if (player.attacking) playerState=STATE.ATTACK;
+      else if (!player.grounded) playerState=STATE.JUMP;
+      else if (leftPressed||rightPressed) playerState=STATE.RUN;
+      else playerState=STATE.IDLE;
+
+      checkCollision();
+    }
+
+    function checkCollision(){
+      if (!enemy.alive) return;
+      const overlapX=player.x<enemy.x+enemy.w && player.x+player.w>enemy.x;
+      const overlapY=player.y<enemy.y+enemy.h && player.y+player.h>enemy.y;
+      if (overlapX&&overlapY){
+        if (player.vy>0 && player.y+player.h-enemy.y<20){
+          enemy.alive=false; player.vy=JUMP_V/2; winGame();
+        } else if (player.attacking){
+          enemy.alive=false; winGame();
+        } else {
+          loseGame();
+        }
+      }
+    }
+
+    function drawPlayer(){
+      if (!sprite.complete) return;
+      const sW=sprite.width/FRAME_COUNT, sH=sprite.height;
+      let srcFrame=0;
+      if (playerState===STATE.IDLE) srcFrame=0;
+      else if (playerState===STATE.RUN) srcFrame=(runFrameToggle===0?1:2);
+      else if (playerState===STATE.JUMP) srcFrame=3;
+      else if (playerState===STATE.ATTACK) srcFrame=2;
+
+      ctx.save();
+      if (player.facing===-1){ ctx.translate(player.x+player.w/2,0); ctx.scale(-1,1); ctx.translate(-(player.x+player.w/2),0); }
+      ctx.drawImage(sprite,srcFrame*sW,0,sW,sH,player.x,player.y,player.w,player.h);
+      ctx.restore();
+    }
+
+    function drawEnemy(){
+      if (!enemy.alive) return;
+      ctx.fillStyle="red"; ctx.fillRect(enemy.x,enemy.y,enemy.w,enemy.h);
+    }
+
+    function update(){
+      updatePhysics();
+      frameTimer++;
+      if (playerState===STATE.RUN){ if (frameTimer>7){ runFrameToggle=1-runFrameToggle; frameTimer=0; } }
+      else { runFrameToggle=0; frameTimer=0; }
+      draw();
+      requestAnimationFrame(update);
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#333'; ctx.fillRect(0,0,canvas.width/DPR,groundY);
+      ctx.fillStyle='#111'; ctx.fillRect(0,groundY,canvas.width/DPR,canvas.height/DPR-groundY);
+      drawEnemy(); drawPlayer();
+    }
+
+    function jump(){ if (player.grounded){ player.vy=JUMP_V; player.grounded=false; } }
+    function attack(){ if (!player.alive) return; player.attacking=true; setTimeout(()=>player.attacking=false,250); }
+
+    function loseGame(){
+      player.alive=false;
+      showPopup("❌ باختی!",[
+        {text:"🔄 Retry", action:()=>{ location.reload(); }},
+        {text:"🏠 Main Menu", action:()=>{ window.location.href="levels.html"; }}
+      ]);
+    }
+    function winGame(){
+      player.alive=false;
+      localStorage.setItem("level2Unlocked","true");
+      showPopup("🎉 مرحله تمام شد!",[
+        {text:"🏠 Main Menu", action:()=>{ window.location.href="levels.html"; }},
+        {text:"➡️ Next Level", action:()=>{ window.location.href="level2.html"; }}
+      ]);
+    }
+
+    function showPopup(msg,buttons){
+      const popup=document.getElementById("popup");
+      document.getElementById("popupMsg").innerText=msg;
+      const btnBox=document.getElementById("popupBtns");
+      btnBox.innerHTML="";
+      buttons.forEach(b=>{
+        const btn=document.createElement("button");
+        btn.innerText=b.text;
+        btn.onclick=b.action;
+        btnBox.appendChild(btn);
+      });
+      popup.classList.add("active");
+    }
+
+    // کنترل‌ها
+    window.addEventListener('keydown',e=>{
+      if(e.code==='ArrowLeft') leftPressed=true;
+      if(e.code==='ArrowRight') rightPressed=true;
+      if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); jump(); }
+      if(e.code==='KeyA') attack();
+    });
+    window.addEventListener('keyup',e=>{
+      if(e.code==='ArrowLeft') leftPressed=false;
+      if(e.code==='ArrowRight') rightPressed=false;
+    });
+    document.getElementById('left').addEventListener('pointerdown',()=>leftPressed=true);
+    document.getElementById('left').addEventListener('pointerup',()=>leftPressed=false);
+    document.getElementById('right').addEventListener('pointerdown',()=>rightPressed=true);
+    document.getElementById('right').addEventListener('pointerup',()=>rightPressed=false);
+    document.getElementById('jump').addEventListener('click',jump);
+    document.getElementById('attack').addEventListener('click',attack);
+    canvas.addEventListener('click',attack);
+
+    sprite.onload=()=>{ resizeCanvas(); requestAnimationFrame(update); };
+    sprite.onerror=()=>{ resizeCanvas(); requestAnimationFrame(update); };
+  </script>
+</body>
+</html>
